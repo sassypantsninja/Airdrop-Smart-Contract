@@ -1,0 +1,28 @@
+const Web3 = require('web3');
+require('dotenv').config();
+
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.INFURA_URL));
+
+const userAccount = web3.eth.accounts.privateKeyToAccount(process.env.USER_PRIVATE_KEY);
+web3.eth.accounts.wallet.add(userAccount);
+
+const contractAddress = 'YOUR_CONTRACT_ADDRESS';
+const abi = JSON.parse('YOUR_CONTRACT_ABI');
+const contract = new web3.eth.Contract(abi, contractAddress);
+
+(async () => {
+    const amount = web3.utils.toWei('100', 'ether');
+    const signature = 'GENERATED_SIGNATURE';
+
+    const claimTx = contract.methods.claimTokens(amount, signature);
+    const gas = await claimTx.estimateGas({ from: userAccount.address });
+    const gasPrice = await web3.eth.getGasPrice();
+
+    await claimTx.send({
+        from: userAccount.address,
+        gas,
+        gasPrice,
+    });
+
+    console.log('Tokens claimed');
+})();
