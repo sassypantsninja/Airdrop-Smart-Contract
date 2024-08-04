@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract ScrollMarks is ERC20, Ownable {
+    mapping(address => bool) public airdropEligibility;
+    mapping(address => bool) public hasClaimed;
+
+    uint256 public airdropAmount;
+
+    event AirdropClaimed(address indexed user, uint256 amount);
+
+    constructor(uint256 initialSupply, uint256 _airdropAmount) ERC20("ScrollMarks", "SCM") {
+        _mint(msg.sender, initialSupply);
+        airdropAmount = _airdropAmount;
+    }
+
+    function setAirdropEligibility(address[] calldata users, bool eligibility) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            airdropEligibility[users[i]] = eligibility;
+        }
+    }
+
+    function setAirdropAmount(uint256 amount) external onlyOwner {
+        airdropAmount = amount;
+    }
+
+    function claimAirdrop() external {
+        require(airdropEligibility[msg.sender], "Not eligible for airdrop");
+        require(!hasClaimed[msg.sender], "Airdrop already claimed");
+
+        hasClaimed[msg.sender] = true;
+        _mint(msg.sender, airdropAmount);
+
+        emit AirdropClaimed(msg.sender, airdropAmount);
+    }
+
+    function checkEligibility(address user) external view returns (bool) {
+        return airdropEligibility[user];
+    }
+
+    function hasUserClaimed(address user) external view returns (bool) {
+        return hasClaimed[user];
+    }
+}
