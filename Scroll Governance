@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract ScrollGovernance {
+    struct Proposal {
+        uint256 id;
+        address proposer;
+        string description;
+        uint256 voteCount;
+        bool active;
+        bool executed;
+    }
+
+    // Array to store all proposals
+    Proposal[] public proposals;
+
+    // Mapping to track who voted on which proposal (proposalId => voter => hasVoted)
+    mapping(uint256 => mapping(address => bool)) public votes;
+
+    uint256 public proposalCount;  // To track the number of proposals
+
+    address public owner;  // Owner of the contract (can be a DAO or individual)
+    
+    event ProposalCreated(uint256 id, address proposer, string description);
+    event VoteCast(uint256 proposalId, address voter);
+    event ProposalExecuted(uint256 proposalId);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can execute this");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;  // Set the contract deployer as the owner initially
+    }
+
+    // Create a new proposal
+    function createProposal(string memory description) external {
+        proposals.push(Proposal({
+            id: proposalCount,
+            proposer: msg.sender,
+            description: description,
+            voteCount: 0,
+            active: true,
+            executed: false
+        }));
+        proposalCount++;
+        emit ProposalCreated(proposalCount - 1, msg.sender, description);
+    }
+
+    // Vote on a proposal
+    function voteOnProposal(uint256 proposalId) external {
+        require(proposals[proposalId].active, "Proposal is not active");
+        require(!votes[proposalId][msg.sender], "Already voted on this proposal");
+
+        votes[proposalId][msg.sender] = true;
+        proposals[proposalId].voteCount++;
+
+        emit VoteCast(proposalId, msg.sender);
+    }
+
+    // Execute a proposal (for example after reaching a certain vote threshold)
+    function executeProposal(uint256 proposalId) external onlyOwner {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.active, "Proposal is not active");
+        require(!proposal.executed, "Proposal already executed");
+        // Here, you could check for a vote threshold or any condition
+
+        proposal.executed = true;
+        proposal.active = false;
+
+        emit ProposalExecuted(proposalId);
+        // Logic to execute proposal can go here
+    }
+
+    // Pagination function to get proposals in a paginated way
+    function getProposals(uint256 offset, uint256 limit) external view returns (Proposal[] memory) {
+        uint256 proposalLength = proposalCount;
+        if (offset >= proposalLength) {
+            return new Proposal ;
+        }
+
+        // Ensure we don't go out of bounds
+        uint256 end = offset + limit > proposalLength ? proposalLength : offset + limit;
+        uint256 proposalsToReturn = end - offset;
+
+        Proposal[] memory paginatedProposals = new Proposal[](proposalsToReturn);
+        for (uint256 i = 0; i < proposalsToReturn; i++) {
+            paginatedProposals[i] = proposals[offset + i];
+        }
+
+        return paginatedProposals;
+    }
+
+    // Get a specific proposal by its ID
+    function getProposalById(uint256 proposalId) external view returns (Proposal memory) {
+        require(proposalId < proposalCount, "Proposal does not exist");
+        return proposals[proposalId];
+    }
+
+    // Get total number of proposals
+    function getTotalProposals() external view returns (uint256) {
+        return proposalCount;
+    }
+}
